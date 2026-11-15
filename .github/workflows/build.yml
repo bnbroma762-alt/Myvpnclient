@@ -25,6 +25,9 @@ jobs:
           SDKM="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKM" --licenses > /dev/null || true
           "$SDKM" "platforms;android-34" "build-tools;34.0.0" "ndk;${NDK_VERSION}"
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          ls -la "${ANDROID_HOME}/ndk" || true
+          ls "${ANDROID_HOME}/ndk/${NDK_VERSION}" | head -5 || true
       - name: Build libbox.aar
         run: |
           git clone --depth 1 --branch "${SINGBOX_VERSION}" https://github.com/SagerNet/sing-box.git
@@ -32,7 +35,11 @@ jobs:
           make lib_install
           export PATH="$PATH:$(go env GOPATH)/bin"
           export ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${NDK_VERSION}"
-          go run ./cmd/internal/build_libbox -target android
+          go run ./cmd/internal/build_libbox -target android || \
+          gomobile bind -v -androidapi 21 -javapkg=io.nekohasekai -libname=box \
+            -tags "with_gvisor,with_quic,with_utls,with_clash_api" \
+            -trimpath -ldflags "-s -w -buildid=" ./experimental/libbox
+          ls -la libbox.aar
           mkdir -p ../myvpn/app/libs
           cp libbox.aar ../myvpn/app/libs/libbox.aar
       - uses: gradle/actions/setup-gradle@v4
